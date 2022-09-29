@@ -4,13 +4,9 @@ var latestCounter = $("#latest_counter");
 var style = "";
 
 function getLatestCounterLog() {
-    console.log("Hello");
     $.ajax( {
         url     : latestCounterEndpoint
       , success : function( content ){
-
-        console.log(content);
-
         lastDatetime = content.datetime
         if( content.value >= 5 ){
             style = "background:green;";
