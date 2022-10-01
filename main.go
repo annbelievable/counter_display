@@ -21,6 +21,7 @@ func main() {
 	fmt.Println("hello")
 	db, _ = sql.Open("sqlite3", "./counter.db")
 	defer db.Close()
+	// go counterLogGenerator()
 	startServer()
 }
 
@@ -33,6 +34,7 @@ func startServer() {
 
 	// for the API
 	http.HandleFunc("/latest-counter", LatestCounter)
+	http.HandleFunc("/last-ten-counter", LastTenCounter)
 
 	http.ListenAndServe(":8080", nil)
 }
@@ -58,8 +60,17 @@ func LatestCounter(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-func LastTenCounters(w http.ResponseWriter, r *http.Request) {
+func LastTenCounter(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	cls, err := selectLastTenCounterlog(db)
+
+	if err != nil {
+		log.Printf("[ERROR] %+v\n", err)
+	}
+
+	data, _ := json.Marshal(&cls)
+
+	w.Write(data)
 }
 
 func counterLogGenerator() {
@@ -81,12 +92,32 @@ func insertCounterLog(db *sql.DB) error {
 
 func selectLatestCounterlog(db *sql.DB) (models.CounterLog, error) {
 	row := db.QueryRow("SELECT value, datetime FROM counter_log ORDER BY datetime DESC LIMIT 0, 1;")
-	var c models.CounterLog
-	err := row.Scan(&c.Value, &c.Datetime)
+	var cl models.CounterLog
+	err := row.Scan(&cl.Value, &cl.Datetime)
 
 	if err != nil {
-		return c, err
+		return cl, err
 	}
 
-	return c, nil
+	return cl, nil
+}
+
+func selectLastTenCounterlog(db *sql.DB) ([]models.CounterLog, error) {
+	rows, err := db.Query("SELECT value, datetime FROM counter_log ORDER BY datetime DESC LIMIT 0, 10;")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var cls []models.CounterLog
+
+	for rows.Next() {
+		var cl models.CounterLog
+		if err := rows.Scan(&cl.Value, &cl.Datetime); err != nil {
+			return cls, err
+		}
+		cls = append(cls, cl)
+	}
+
+	return cls, nil
 }
